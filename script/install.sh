@@ -211,7 +211,6 @@ generate_v2node_config() {
 EOF
         echo -e "${green}已生成 /etc/v2node/config.json${plain}"
         echo -e "${green}V2node 配置文件生成完成,正在重新启动服务${plain}"
-        v2node restart
 }
 
 install_v2node() {
@@ -369,9 +368,13 @@ EOF
 
             # 生成配置文件（覆盖可能从包中复制的模板）
             generate_v2node_config "$api_host" "$node_id" "$api_key"
+            v2node restart
         else
             echo "已跳过自动生成配置。如需后续生成，可执行: v2node generate"
         fi
+    else
+        echo "检测到已有配置文件，已跳过自动生成配置。如需后续生成，可执行: v2node generate"
+        v2node restart
     fi
 }
 
