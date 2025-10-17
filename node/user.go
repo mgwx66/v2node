@@ -8,7 +8,13 @@ import (
 )
 
 func (c *Controller) reportUserTrafficTask() (err error) {
-	userTraffic, _ := c.server.GetUserTrafficSlice(c.tag, true)
+	var reportmin = 0
+	var devicemin = 0
+	if c.info.Common.BaseConfig != nil {
+		reportmin = c.info.Common.BaseConfig.NodeReportMinTraffic
+		devicemin = c.info.Common.BaseConfig.DeviceOnlineMinTraffic
+	}
+	userTraffic, _ := c.server.GetUserTrafficSlice(c.tag, reportmin)
 	if len(userTraffic) > 0 {
 		err = c.apiClient.ReportUserTraffic(userTraffic)
 		if err != nil {
@@ -25,12 +31,11 @@ func (c *Controller) reportUserTrafficTask() (err error) {
 	if onlineDevice, err := c.limiter.GetOnlineDevice(); err != nil {
 		log.Print(err)
 	} else if len(*onlineDevice) > 0 {
-		// Only report user has traffic > 100kb to allow ping test
 		var result []panel.OnlineUser
 		var nocountUID = make(map[int]struct{})
 		for _, traffic := range userTraffic {
 			total := traffic.Upload + traffic.Download
-			if total < int64(c.info.Common.BaseConfig.DeviceOnlineMinTraffic*1000) {
+			if total < int64(devicemin*1000) {
 				nocountUID[traffic.UID] = struct{}{}
 			}
 		}

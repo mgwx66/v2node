@@ -7,7 +7,6 @@ import (
 	panel "github.com/wyx2685/v2node/api/v2board"
 	"github.com/wyx2685/v2node/common/task"
 	vCore "github.com/wyx2685/v2node/core"
-	"github.com/wyx2685/v2node/limiter"
 )
 
 func (c *Controller) startTasks(node *panel.NodeInfo) {
@@ -51,6 +50,12 @@ func (c *Controller) nodeInfoMonitor() (err error) {
 		}).Error("Get node info failed")
 		return nil
 	}
+	if newN != nil {
+		log.WithFields(log.Fields{
+			"tag": c.tag,
+		}).Error("Got new node info, reload")
+		c.server.ReloadCh <- struct{}{}
+	}
 	// get user info
 	newU, err := c.apiClient.GetUserList()
 	if err != nil {
@@ -69,94 +74,7 @@ func (c *Controller) nodeInfoMonitor() (err error) {
 		}).Error("Get alive list failed")
 		return nil
 	}
-	if newN != nil {
-		c.info = newN
-		// nodeInfo changed
-		if newU != nil {
-			c.userList = newU
-		}
-		// Remove old node
-		log.WithField("tag", c.tag).Info("Node changed, reload")
-		err = c.server.DelNode(c.tag)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"tag": c.tag,
-				"err": err,
-			}).Panic("Delete node failed")
-			return nil
-		}
 
-		// Update limiter
-		c.tag = c.buildNodeTag(newN)
-		// Remove Old limiter
-		limiter.DeleteLimiter(c.tag)
-		// Add new Limiter
-		l := limiter.AddLimiter(c.tag, c.userList, newA)
-		c.limiter = l
-
-		// update alive list
-		if newA != nil {
-			c.limiter.AliveList = newA
-		}
-		// Update rule
-		err = c.limiter.UpdateRule(&newN.Rules)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"tag": c.tag,
-				"err": err,
-			}).Error("Update Rule failed")
-			return nil
-		}
-
-		// check cert
-		if newN.Security == panel.Tls {
-			err = c.requestCert()
-			if err != nil {
-				log.WithFields(log.Fields{
-					"tag": c.tag,
-					"err": err,
-				}).Error("Request cert failed")
-				return nil
-			}
-		}
-		// add new node
-		err = c.server.AddNode(c.tag, newN)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"tag": c.tag,
-				"err": err,
-			}).Panic("Add node failed")
-			return nil
-		}
-		_, err = c.server.AddUsers(&vCore.AddUsersParams{
-			Tag:      c.tag,
-			Users:    c.userList,
-			NodeInfo: newN,
-		})
-		if err != nil {
-			log.WithFields(log.Fields{
-				"tag": c.tag,
-				"err": err,
-			}).Error("Add users failed")
-			return nil
-		}
-		// Check interval
-		if c.nodeInfoMonitorPeriodic.Interval != newN.PullInterval &&
-			newN.PullInterval != 0 {
-			c.nodeInfoMonitorPeriodic.Interval = newN.PullInterval
-			c.nodeInfoMonitorPeriodic.Close()
-			_ = c.nodeInfoMonitorPeriodic.Start(false)
-		}
-		if c.userReportPeriodic.Interval != newN.PushInterval &&
-			newN.PushInterval != 0 {
-			c.userReportPeriodic.Interval = newN.PullInterval
-			c.userReportPeriodic.Close()
-			_ = c.userReportPeriodic.Start(false)
-		}
-		log.WithField("tag", c.tag).Infof("Added %d new users", len(c.userList))
-		// exit
-		return nil
-	}
 	// update alive list
 	if newA != nil {
 		c.limiter.AliveList = newA

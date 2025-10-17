@@ -17,6 +17,10 @@ import (
 	coreConf "github.com/xtls/xray-core/infra/conf"
 )
 
+func (v *V2Core) removeInbound(tag string) error {
+	return v.ihm.RemoveHandler(context.Background(), tag)
+}
+
 func (v *V2Core) addInbound(config *core.InboundHandlerConfig) error {
 	rawHandler, err := core.CreateObject(v.Server, config)
 	if err != nil {
@@ -45,6 +49,8 @@ func buildInbound(nodeInfo *panel.NodeInfo, tag string) (*core.InboundHandlerCon
 		err = buildTrojan(nodeInfo, in)
 	case "shadowsocks":
 		err = buildShadowsocks(nodeInfo, in)
+	case "hysteria2":
+		err = buildHysteria2(nodeInfo, in)
 	default:
 		return nil, fmt.Errorf("unsupported node type: %s", nodeInfo.Type)
 	}
@@ -323,6 +329,30 @@ func buildShadowsocks(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourC
 	inbound.Settings = (*json.RawMessage)(&sets)
 	if err != nil {
 		return fmt.Errorf("marshal shadowsocks settings error: %s", err)
+	}
+	return nil
+}
+
+func buildHysteria2(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig) error {
+	inbound.Protocol = "hysteria2"
+	s := nodeInfo.Common
+	settings := &coreConf.Hysteria2ServerConfig{
+		UpMbps:                uint64(s.UpMbps),
+		DownMbps:              uint64(s.DownMbps),
+		IgnoreClientBandwidth: s.Ignore_Client_Bandwidth,
+		Obfs: &coreConf.Hysteria2ObfsConfig{
+			Type:     s.Obfs,
+			Password: s.ObfsPassword,
+		},
+	}
+
+	t := coreConf.TransportProtocol("hysteria2")
+	inbound.StreamSetting = &coreConf.StreamConfig{Network: &t}
+
+	sets, err := json.Marshal(settings)
+	inbound.Settings = (*json.RawMessage)(&sets)
+	if err != nil {
+		return fmt.Errorf("marshal hysteria2 settings error: %s", err)
 	}
 	return nil
 }

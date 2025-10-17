@@ -12,6 +12,12 @@ type Conf struct {
 	NodeConfigs []NodeConfig `mapstructure:"Nodes"`
 }
 
+type LogConfig struct {
+	Level  string `mapstructure:"Level"`
+	Output string `mapstructure:"Output"`
+	Access string `mapstructure:"Access"`
+}
+
 type NodeConfig struct {
 	APIHost string `mapstructure:"ApiHost"`
 	NodeID  int    `mapstructure:"NodeID"`
@@ -24,6 +30,7 @@ func New() *Conf {
 		LogConfig: LogConfig{
 			Level:  "info",
 			Output: "",
+			Access: "none",
 		},
 	}
 }

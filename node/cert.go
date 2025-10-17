@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"path/filepath"
-	"strconv"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -37,13 +35,11 @@ func (c *Controller) requestCert() error {
 	case "none", "":
 	case "file":
 		if cert.CertFile == "" || cert.KeyFile == "" {
-			cert.CertFile = filepath.Join(c.server.ConfigDir, c.info.Type+strconv.Itoa(c.info.Id)+".cer")
-			cert.KeyFile = filepath.Join(c.server.ConfigDir, c.info.Type+strconv.Itoa(c.info.Id)+".key")
+			return fmt.Errorf("cert file path or key file path not exist")
 		}
 	case "dns", "http":
 		if cert.CertFile == "" || cert.KeyFile == "" {
-			cert.CertFile = filepath.Join(c.server.ConfigDir, c.info.Type+strconv.Itoa(c.info.Id)+".cer")
-			cert.KeyFile = filepath.Join(c.server.ConfigDir, c.info.Type+strconv.Itoa(c.info.Id)+".key")
+			return fmt.Errorf("cert file path or key file path not exist")
 		}
 		if file.IsExist(cert.CertFile) && file.IsExist(cert.KeyFile) {
 			return nil
@@ -58,8 +54,7 @@ func (c *Controller) requestCert() error {
 		}
 	case "self":
 		if cert.CertFile == "" || cert.KeyFile == "" {
-			cert.CertFile = filepath.Join(c.server.ConfigDir, c.info.Type+strconv.Itoa(c.info.Id)+".cer")
-			cert.KeyFile = filepath.Join(c.server.ConfigDir, c.info.Type+strconv.Itoa(c.info.Id)+".key")
+			return fmt.Errorf("cert file path or key file path not exist")
 		}
 		if file.IsExist(cert.CertFile) && file.IsExist(cert.KeyFile) {
 			return nil

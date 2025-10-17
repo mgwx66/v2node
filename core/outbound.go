@@ -31,6 +31,14 @@ func buildDefaultOutbound() (*core.OutboundHandlerConfig, error) {
 	return outboundDetourConfig.Build()
 }
 
+// build block outbund
+func buildBlockOutbound() (*core.OutboundHandlerConfig, error) {
+	outboundDetourConfig := &conf.OutboundDetourConfig{}
+	outboundDetourConfig.Protocol = "blackhole"
+	outboundDetourConfig.Tag = "block"
+	return outboundDetourConfig.Build()
+}
+
 func (v *V2Core) addOutbound(config *core.OutboundHandlerConfig) error {
 	rawHandler, err := core.CreateObject(v.Server, config)
 	if err != nil {

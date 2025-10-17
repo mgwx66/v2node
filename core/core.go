@@ -1,7 +1,6 @@
 package core
 
 import (
-	"encoding/json"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -27,9 +26,10 @@ type AddUsersParams struct {
 }
 
 type V2Core struct {
+	Config     *conf.Conf
+	ReloadCh   chan struct{}
 	access     sync.Mutex
 	Server     *core.Instance
-	ConfigDir  string
 	users      *UserMap
 	ihm        inbound.Manager
 	ohm        outbound.Manager
@@ -41,9 +41,9 @@ type UserMap struct {
 	mapLock sync.RWMutex
 }
 
-func New(ConfigDir string) *V2Core {
+func New(config *conf.Conf) *V2Core {
 	core := &V2Core{
-		ConfigDir: ConfigDir,
+		Config: config,
 		users: &UserMap{
 			uidMap: make(map[string]int),
 		},
@@ -51,10 +51,10 @@ func New(ConfigDir string) *V2Core {
 	return core
 }
 
-func (v *V2Core) Start(c *conf.Conf) error {
+func (v *V2Core) Start(infos []*panel.NodeInfo) error {
 	v.access.Lock()
 	defer v.access.Unlock()
-	v.Server = getCore(c)
+	v.Server = getCore(v.Config, infos)
 	if err := v.Server.Start(); err != nil {
 		return err
 	}
@@ -67,6 +67,7 @@ func (v *V2Core) Start(c *conf.Conf) error {
 func (v *V2Core) Close() error {
 	v.access.Lock()
 	defer v.access.Unlock()
+	v.Config = nil
 	v.ihm = nil
 	v.ohm = nil
 	v.dispatcher = nil
@@ -77,41 +78,20 @@ func (v *V2Core) Close() error {
 	return nil
 }
 
-func getCore(c *conf.Conf) *core.Instance {
+func getCore(c *conf.Conf, infos []*panel.NodeInfo) *core.Instance {
 	// Log Config
-	access_output := "none"
-	if c.LogConfig.Output != "" {
-		access_output = c.LogConfig.Output
-	}
 	coreLogConfig := &coreConf.LogConfig{
 		LogLevel:  c.LogConfig.Level,
-		AccessLog: access_output,
+		AccessLog: c.LogConfig.Access,
 		ErrorLog:  c.LogConfig.Output,
 	}
-	// DNS config
-	coreDnsConfig := &coreConf.DNSConfig{}
-	dnsConfig, _ := coreDnsConfig.Build()
-	// Routing config
-	coreRouterConfig := &coreConf.RouterConfig{}
-	routeConfig, _ := coreRouterConfig.Build()
+	// Custom config
+	dnsConfig, outBoundConfig, routeConfig, err := GetCustomConfig(infos)
+	if err != nil {
+		log.WithField("err", err).Panic("failed to build custom config")
+	}
 	// Inbound config
 	var inBoundConfig []*core.InboundHandlerConfig
-	// Outbound config
-	var outBoundConfig []*core.OutboundHandlerConfig
-	sendthrough := "origin"
-	settings := `{"domainStrategy": "UseIPv4v6"}`
-	rawsettings := json.RawMessage(settings)
-	default_outbound := &coreConf.OutboundDetourConfig{
-		Protocol:    "freedom",
-		SendThrough: &sendthrough,
-		Tag:         "Default_Outbound",
-		Settings:    &rawsettings,
-	}
-	ob, err := default_outbound.Build()
-	if err != nil {
-		log.WithField("err", err).Panic("Failed to understand Outbound config. Please check: https://xtls.github.io/config/outbound.html for help")
-	}
-	outBoundConfig = append(outBoundConfig, ob)
 
 	// Policy config
 	levelPolicyConfig := &coreConf.Policy{

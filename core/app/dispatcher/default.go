@@ -4,7 +4,6 @@ package dispatcher
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"strings"
 	"sync"
@@ -302,12 +301,12 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 		ctx = session.ContextWithContent(ctx, content)
 	}
 	sniffingRequest := content.SniffingRequest
-	inbound, outbound, l, err := d.getLink(ctx, destination.Network)
+	inbound, outbound, _, err := d.getLink(ctx, destination.Network)
 	if err != nil {
 		return nil, err
 	}
 	if !sniffingRequest.Enabled {
-		go d.routedDispatch(ctx, outbound, destination, l, "")
+		go d.routedDispatch(ctx, outbound, destination)
 	} else {
 		go func() {
 			cReader := &cachedReader{
@@ -336,7 +335,7 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 					ob.Target = destination
 				}
 			}
-			d.routedDispatch(ctx, outbound, destination, l, content.Protocol)
+			d.routedDispatch(ctx, outbound, destination)
 		}()
 	}
 	return inbound, nil
@@ -429,7 +428,7 @@ func (d *DefaultDispatcher) DispatchLink(ctx context.Context, destination net.De
 
 	sniffingRequest := content.SniffingRequest
 	if !sniffingRequest.Enabled {
-		d.routedDispatch(ctx, outbound, destination, limit, "")
+		d.routedDispatch(ctx, outbound, destination)
 	} else {
 		cReader := &cachedReader{
 			reader: outbound.Reader.(buf.TimeoutReader),
@@ -457,7 +456,7 @@ func (d *DefaultDispatcher) DispatchLink(ctx context.Context, destination net.De
 				ob.Target = destination
 			}
 		}
-		d.routedDispatch(ctx, outbound, destination, limit, content.Protocol)
+		d.routedDispatch(ctx, outbound, destination)
 	}
 
 	return nil
@@ -519,48 +518,9 @@ func sniffer(ctx context.Context, cReader *cachedReader, metadataOnly bool, netw
 	return contentResult, contentErr
 }
 
-func (d *DefaultDispatcher) routedDispatch(ctx context.Context, link *transport.Link, destination net.Destination, l *limiter.Limiter, protocol string) {
+func (d *DefaultDispatcher) routedDispatch(ctx context.Context, link *transport.Link, destination net.Destination) {
 	outbounds := session.OutboundsFromContext(ctx)
 	ob := outbounds[len(outbounds)-1]
-
-	sessionInbound := session.InboundFromContext(ctx)
-	if sessionInbound.User != nil {
-		if l == nil {
-			var err error
-			l, err = limiter.GetLimiter(sessionInbound.Tag)
-			if err != nil {
-				errors.LogError(ctx, "get limiter ", sessionInbound.Tag, " error: ", err)
-			}
-		}
-		if l != nil {
-			var destStr string
-			if destination.Address.Family().IsDomain() {
-				destStr = destination.Address.Domain()
-			} else {
-				destStr = destination.Address.IP().String()
-			}
-			if l.CheckDomainRule(destStr) {
-				errors.LogError(ctx, fmt.Sprintf(
-					"User %s access domain %s reject by rule",
-					sessionInbound.User.Email,
-					destStr))
-				common.Close(link.Writer)
-				common.Interrupt(link.Reader)
-				return
-			}
-			if len(protocol) != 0 {
-				if l.CheckProtocolRule(protocol) {
-					errors.LogError(ctx, fmt.Sprintf(
-						"User %s access protocol %s reject by rule",
-						sessionInbound.User.Email,
-						protocol))
-					common.Close(link.Writer)
-					common.Interrupt(link.Reader)
-					return
-				}
-			}
-		}
-	}
 
 	var handler outbound.Handler
 

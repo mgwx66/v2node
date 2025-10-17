@@ -1,21 +1,5 @@
 package limiter
 
-import (
-	"time"
-
-	panel "github.com/wyx2685/v2node/api/v2board"
-	"github.com/wyx2685/v2node/common/format"
-)
-
-func (l *Limiter) AddDynamicSpeedLimit(tag string, userInfo *panel.UserInfo, limitNum int, expire int64) error {
-	userLimit := &UserLimitInfo{
-		DynamicSpeedLimit: limitNum,
-		ExpireTime:        time.Now().Add(time.Duration(expire) * time.Second).Unix(),
-	}
-	l.UserLimitInfo.Store(format.UserTag(tag, userInfo.Uuid), userLimit)
-	return nil
-}
-
 // determineSpeedLimit returns the minimum non-zero rate
 func determineSpeedLimit(limit1, limit2 int) (limit int) {
 	if limit1 == 0 || limit2 == 0 {

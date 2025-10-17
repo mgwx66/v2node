@@ -26,24 +26,27 @@ type Controller struct {
 }
 
 // NewController return a Node controller with default parameters.
-func NewController(server *core.V2Core, api *panel.Client) *Controller {
+func NewController(api *panel.Client, info *panel.NodeInfo) *Controller {
 	controller := &Controller{
-		server:    server,
 		apiClient: api,
+		info:      info,
 	}
 	return controller
 }
 
 // Start implement the Start() function of the service interface
-func (c *Controller) Start() error {
-	// First fetch Node Info
+func (c *Controller) Start(x *core.V2Core) error {
+	// Init Core
+	c.server = x
 	var err error
-	node, err := c.apiClient.GetNodeInfo()
-	if err != nil {
-		return fmt.Errorf("get node info error: %s", err)
-	}
-	if node != nil {
-		c.info = node
+	// First fetch Node Info
+	node := c.info
+	if node == nil {
+		c.info, err = c.apiClient.GetNodeInfo()
+		if err != nil {
+			return fmt.Errorf("get node info error: %s", err)
+		}
+		node = c.info
 	}
 	// Update user
 	c.userList, err = c.apiClient.GetUserList()

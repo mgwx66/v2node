@@ -15,17 +15,13 @@ func (v *V2Core) AddNode(tag string, info *panel.NodeInfo) error {
 	if err != nil {
 		return fmt.Errorf("add inbound error: %s", err)
 	}
-	outBoundConfig, err := buildDefaultOutbound()
-	if err != nil {
-		return fmt.Errorf("build outbound error: %s", err)
-	}
-	err = v.addOutbound(outBoundConfig)
-	if err != nil {
-		return fmt.Errorf("add outbound error: %s", err)
-	}
 	return nil
 }
 
 func (v *V2Core) DelNode(tag string) error {
-	panic("unimplemented")
+	err := v.removeInbound(tag)
+	if err != nil {
+		return fmt.Errorf("remove in error: %s", err)
+	}
+	return nil
 }

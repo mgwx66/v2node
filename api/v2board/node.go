@@ -25,8 +25,6 @@ type NodeInfo struct {
 	Security     int
 	PushInterval time.Duration
 	PullInterval time.Duration
-	DNS          DNS
-	Rules        Rules
 
 	Common *CommonNode
 }
@@ -64,15 +62,17 @@ type CommonNode struct {
 }
 
 type Route struct {
-	Id          int         `json:"id"`
-	Match       interface{} `json:"match"`
-	Action      string      `json:"action"`
-	ActionValue string      `json:"action_value"`
+	Id          int      `json:"id"`
+	Match       []string `json:"match"`
+	Action      string   `json:"action"`
+	ActionValue *string  `json:"action_value"`
 }
+
 type BaseConfig struct {
 	PushInterval           any `json:"push_interval"`
 	PullInterval           any `json:"pull_interval"`
 	DeviceOnlineMinTraffic int `json:"device_online_min_traffic"`
+	NodeReportMinTraffic   int `json:"node_report_min_traffic"`
 }
 
 type TlsSettings struct {
@@ -86,7 +86,7 @@ type TlsSettings struct {
 	CertMode         string `json:"cert_mode"`
 	Provider         string `json:"provider"`
 	DNSEnv           string `json:"dns_env"`
-	RejectUnknownSni bool   `json:"reject_unknown_sni"`
+	RejectUnknownSni string `json:"reject_unknown_sni"`
 }
 
 type CertInfo struct {
@@ -105,16 +105,6 @@ type EncSettings struct {
 	Ticket        string `json:"ticket"`
 	ServerPadding string `json:"server_padding"`
 	PrivateKey    string `json:"private_key"`
-}
-
-type DNS struct {
-	DNSMap  map[string]map[string]interface{}
-	DNSJson []byte
-}
-
-type Rules struct {
-	Regexp   []string
-	Protocol []string
 }
 
 func (c *Client) GetNodeInfo() (node *NodeInfo, err error) {
@@ -150,10 +140,6 @@ func (c *Client) GetNodeInfo() (node *NodeInfo, err error) {
 	}
 	node = &NodeInfo{
 		Id: c.NodeId,
-		DNS: DNS{
-			DNSMap:  make(map[string]map[string]interface{}),
-			DNSJson: []byte(""),
-		},
 	}
 	// parse protocol params
 	cm := &CommonNode{}
@@ -171,14 +157,14 @@ func (c *Client) GetNodeInfo() (node *NodeInfo, err error) {
 	default:
 		return nil, fmt.Errorf("unsupport protocol: %s", cm.Protocol)
 	}
-	
+
 	cm.CertInfo = &CertInfo{
 		CertMode:         cm.TlsSettings.CertMode,
 		Email:            "node@v2board.com",
 		CertDomain:       cm.TlsSettings.ServerName,
 		DNSEnv:           make(map[string]string),
 		Provider:         cm.TlsSettings.Provider,
-		RejectUnknownSni: cm.TlsSettings.RejectUnknownSni,
+		RejectUnknownSni: cm.TlsSettings.RejectUnknownSni == "1",
 	}
 	if cm.CertInfo.CertMode == "dns" && cm.TlsSettings.DNSEnv != "" {
 		envs := strings.Split(cm.TlsSettings.DNSEnv, ",")
@@ -189,54 +175,12 @@ func (c *Client) GetNodeInfo() (node *NodeInfo, err error) {
 			}
 		}
 	}
-	// parse rules and dns
-	for i := range cm.Routes {
-		var matchs []string
-		if _, ok := cm.Routes[i].Match.(string); ok {
-			matchs = strings.Split(cm.Routes[i].Match.(string), ",")
-		} else if _, ok = cm.Routes[i].Match.([]string); ok {
-			matchs = cm.Routes[i].Match.([]string)
-		} else {
-			temp := cm.Routes[i].Match.([]interface{})
-			matchs = make([]string, len(temp))
-			for i := range temp {
-				matchs[i] = temp[i].(string)
-			}
-		}
-		switch cm.Routes[i].Action {
-		case "block":
-			for _, v := range matchs {
-				if strings.HasPrefix(v, "protocol:") {
-					// protocol
-					node.Rules.Protocol = append(node.Rules.Protocol, strings.TrimPrefix(v, "protocol:"))
-				} else {
-					// domain
-					node.Rules.Regexp = append(node.Rules.Regexp, strings.TrimPrefix(v, "regexp:"))
-				}
-			}
-		case "dns":
-			var domains []string
-			domains = append(domains, matchs...)
-			if matchs[0] != "main" {
-				node.DNS.DNSMap[strconv.Itoa(i)] = map[string]interface{}{
-					"address": cm.Routes[i].ActionValue,
-					"domains": domains,
-				}
-			} else {
-				dns := []byte(strings.Join(matchs[1:], ""))
-				node.DNS.DNSJson = dns
-			}
-		}
-	}
 
 	// set interval
 	node.PushInterval = intervalToTime(cm.BaseConfig.PushInterval)
 	node.PullInterval = intervalToTime(cm.BaseConfig.PullInterval)
 
 	node.Common = cm
-	// clear
-	cm.Routes = nil
-	cm.BaseConfig = nil
 
 	return node, nil
 }

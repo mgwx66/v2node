@@ -63,15 +63,24 @@ func serverHandle(_ *cobra.Command, _ []string) {
 		log.SetOutput(f)
 	}
 	limiter.Init()
-	v2core := core.New(filepath.Dir(config))
-	err = v2core.Start(c)
+	//get node info
+	nodes, err := node.New(c.NodeConfigs, filepath.Dir(config))
+	if err != nil {
+		log.WithField("err", err).Error("Get node info failed")
+		return
+	}
+	log.Info("Got nodes info from server")
+	//core
+	var reloadCh = make(chan struct{}, 1)
+	v2core := core.New(c)
+	v2core.ReloadCh = reloadCh
+	err = v2core.Start(nodes.NodeInfos)
 	if err != nil {
 		log.WithField("err", err).Error("Start core failed")
 		return
 	}
 	defer v2core.Close()
-	log.Info("V2node core started")
-	nodes := node.New()
+	//node
 	err = nodes.Start(c.NodeConfigs, v2core)
 	if err != nil {
 		log.WithField("err", err).Error("Run nodes failed")
@@ -80,26 +89,12 @@ func serverHandle(_ *cobra.Command, _ []string) {
 	log.Info("Nodes started")
 	if watch {
 		err = c.Watch(config, func() {
-			nodes.Close()
-			err = v2core.Close()
+			err := reload(config, &nodes, &v2core)
 			if err != nil {
-				log.WithField("err", err).Error("Restart node failed")
-				return
+				log.WithField("err", err).Panic("restart failed")
+			} else {
+				log.Info("v2node restarted")
 			}
-			v2core := core.New(filepath.Dir(config))
-			err = v2core.Start(c)
-			if err != nil {
-				log.WithField("err", err).Error("Start core failed")
-				return
-			}
-			log.Info("V2node core restarted")
-			err = nodes.Start(c.NodeConfigs, v2core)
-			if err != nil {
-				log.WithField("err", err).Error("Run nodes failed")
-				return
-			}
-			log.Info("Nodes restarted")
-			runtime.GC()
 		})
 		if err != nil {
 			log.WithField("err", err).Error("start watch failed")
@@ -108,10 +103,55 @@ func serverHandle(_ *cobra.Command, _ []string) {
 	}
 	// clear memory
 	runtime.GC()
-	// wait exit signal
-	{
-		osSignals := make(chan os.Signal, 1)
-		signal.Notify(osSignals, syscall.SIGINT, syscall.SIGTERM)
-		<-osSignals
+
+	osSignals := make(chan os.Signal, 1)
+	signal.Notify(osSignals, syscall.SIGINT, syscall.SIGTERM)
+
+	for {
+		select {
+		case <-osSignals:
+			nodes.Close()
+			_ = v2core.Close()
+			return
+		case <-reloadCh:
+			log.Info("收到重启信号，正在重新加载配置...")
+			if err := reload(config, &nodes, &v2core); err != nil {
+				log.WithField("err", err).Error("重启失败")
+			} else {
+				log.Info("重启成功")
+			}
+		}
 	}
+}
+
+func reload(config string, nodes **node.Node, v2core **core.V2Core) error {
+	(*nodes).Close()
+	if err := (*v2core).Close(); err != nil {
+		return err
+	}
+
+	newConf := conf.New()
+	if err := newConf.LoadFromPath(config); err != nil {
+		return err
+	}
+
+	newNodes, err := node.New(newConf.NodeConfigs, filepath.Dir(config))
+	if err != nil {
+		return err
+	}
+
+	newCore := core.New(newConf)
+	if err := newCore.Start(newNodes.NodeInfos); err != nil {
+		return err
+	}
+
+	if err := newNodes.Start(newConf.NodeConfigs, newCore); err != nil {
+		return err
+	}
+
+	*nodes = newNodes
+	*v2core = newCore
+
+	runtime.GC()
+	return nil
 }
