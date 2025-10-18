@@ -85,6 +85,29 @@ func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHand
 					continue
 				}
 				coreRouterConfig.RuleList = append(coreRouterConfig.RuleList, rawRule)
+			case "route_ip":
+				if route.ActionValue == nil {
+					continue
+				}
+				outbound := &coreConf.OutboundDetourConfig{}
+				err := json.Unmarshal([]byte(*route.ActionValue), outbound)
+				if err != nil {
+					continue
+				}
+				custom_outbound, err := outbound.Build()
+				if err != nil {
+					continue
+				}
+				coreOutboundConfig = append(coreOutboundConfig, custom_outbound)
+				rule := map[string]interface{}{
+					"ip":          route.Match,
+					"outboundTag": outbound.Tag,
+				}
+				rawRule, err := json.Marshal(rule)
+				if err != nil {
+					continue
+				}
+				coreRouterConfig.RuleList = append(coreRouterConfig.RuleList, rawRule)
 			default:
 				continue
 			}
