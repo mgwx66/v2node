@@ -51,6 +51,8 @@ func buildInbound(nodeInfo *panel.NodeInfo, tag string) (*core.InboundHandlerCon
 		err = buildShadowsocks(nodeInfo, in)
 	case "hysteria2":
 		err = buildHysteria2(nodeInfo, in)
+	case "tuic":
+		err = buildTuic(nodeInfo, in)
 	default:
 		return nil, fmt.Errorf("unsupported node type: %s", nodeInfo.Type)
 	}
@@ -353,6 +355,23 @@ func buildHysteria2(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourCon
 	inbound.Settings = (*json.RawMessage)(&sets)
 	if err != nil {
 		return fmt.Errorf("marshal hysteria2 settings error: %s", err)
+	}
+	return nil
+}
+
+func buildTuic(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig) error {
+	inbound.Protocol = "tuic"
+	s := nodeInfo.Common
+	settings := &coreConf.TuicServerConfig{
+		CongestionControl: s.CongestionControl,
+		ZeroRttHandshake:  s.ZeroRTTHandshake,
+	}
+	t := coreConf.TransportProtocol("tuic")
+	inbound.StreamSetting = &coreConf.StreamConfig{Network: &t}
+	sets, err := json.Marshal(settings)
+	inbound.Settings = (*json.RawMessage)(&sets)
+	if err != nil {
+		return fmt.Errorf("marshal tuic settings error: %s", err)
 	}
 	return nil
 }

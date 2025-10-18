@@ -359,6 +359,8 @@ github.com/gobs/pretty v0.0.0-20180724170744-09732c25a95b/go.mod h1:Xo4aNUOrJnVr
 github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
 github.com/gofrs/flock v0.12.1 h1:MTLVXXHf8ekldpJk3AKicLij9MdwOWkZ+a/jHHZby9E=
 github.com/gofrs/flock v0.12.1/go.mod h1:9zxTsyu5xtJ9DK+1tFZyibEV7y3uwDxPPfbxeeHCoD0=
+github.com/gofrs/uuid/v5 v5.3.2 h1:2jfO8j3XgSwlz/wHqemAEugfnTlikAYHhnqQ8Xh4fE0=
+github.com/gofrs/uuid/v5 v5.3.2/go.mod h1:CDOjlDMVAtN56jqyRUZh58JT31Tiw7/oQyEXZV+9bD8=
 github.com/gogo/protobuf v1.1.1/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.1/go.mod h1:hp+jE20tsWTFYpLwKvXlhS1hjn+gTNwPg2I6zVXpSg4=
 github.com/gogo/protobuf v1.3.2/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
@@ -953,8 +955,8 @@ github.com/volcengine/volc-sdk-golang v1.0.216 h1:+wAq8RvxpGECveRJaAXZFpzrZoQ33W
 github.com/volcengine/volc-sdk-golang v1.0.216/go.mod h1:zHJlaqiMbIB+0mcrsZPTwOb3FB7S/0MCfqlnO8R7hlM=
 github.com/vultr/govultr/v3 v3.21.1 h1:0cnA8fXiqayPGbAlNHaW+5oCQjpDNkkAm3Nt3LOHplM=
 github.com/vultr/govultr/v3 v3.21.1/go.mod h1:9WwnWGCKnwDlNjHjtt+j+nP+0QWq6hQXzaHgddqrLWY=
-github.com/wyx2685/xray-core v0.0.0-20251017191328-881555163118 h1:QvlfeOJATKkED46z2pEcPmDTyaIIJmfSkIWK957IEnc=
-github.com/wyx2685/xray-core v0.0.0-20251017191328-881555163118/go.mod h1:L0/yxNjHC9c5i5Fk9XWxp+BhrD2Wn+DJjeSqTiBG0mk=
+github.com/wyx2685/xray-core v0.0.0-20251018094740-4f93b1d204fa h1:DXqYpSspMeHQrAdjsQtTonFQnb0CYMhSG9GT/eNQeFQ=
+github.com/wyx2685/xray-core v0.0.0-20251018094740-4f93b1d204fa/go.mod h1:C1o8xaWrrt+u0EWz+Gl22dVrETfc5xGXU5+DrpB2Rkw=
 github.com/xdg-go/pbkdf2 v1.0.0/go.mod h1:jrpuAogTd400dnrH08LKmI/xc1MbPOebTwRqcT5RDeI=
 github.com/xdg-go/scram v1.0.2/go.mod h1:1WAq6h33pAW+iRreB34OORO2Nf7qel3VV3fjBj+hCSs=
 github.com/xdg-go/scram v1.1.2/go.mod h1:RT/sEzTbU5y00aCK8UOx6R7YryM0iF1N2MOmC3kKLN4=

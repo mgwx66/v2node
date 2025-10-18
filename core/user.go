@@ -18,6 +18,7 @@ import (
 	"github.com/xtls/xray-core/proxy/shadowsocks"
 	"github.com/xtls/xray-core/proxy/shadowsocks_2022"
 	"github.com/xtls/xray-core/proxy/trojan"
+	"github.com/xtls/xray-core/proxy/tuic"
 	"github.com/xtls/xray-core/proxy/vless"
 )
 
@@ -120,6 +121,8 @@ func (v *V2Core) AddUsers(p *AddUsersParams) (added int, err error) {
 			p.Common.ServerKey)
 	case "hysteria2":
 		users = buildHysteria2Users(p.Tag, p.Users)
+	case "tuic":
+		users = buildTuicUsers(p.Tag, p.Users)
 	default:
 		return 0, fmt.Errorf("unsupported node type: %s", p.NodeInfo.Type)
 	}
@@ -270,5 +273,25 @@ func buildHysteria2User(tag string, userInfo *panel.UserInfo) (user *protocol.Us
 		Level:   0,
 		Email:   format.UserTag(tag, userInfo.Uuid),
 		Account: serial.ToTypedMessage(hysteria2Account),
+	}
+}
+
+func buildTuicUsers(tag string, userInfo []panel.UserInfo) (users []*protocol.User) {
+	users = make([]*protocol.User, len(userInfo))
+	for i := range userInfo {
+		users[i] = buildTuicUser(tag, &userInfo[i])
+	}
+	return users
+}
+
+func buildTuicUser(tag string, userInfo *panel.UserInfo) (user *protocol.User) {
+	tuicAccount := &tuic.Account{
+		Uuid:     userInfo.Uuid,
+		Password: userInfo.Uuid,
+	}
+	return &protocol.User{
+		Level:   0,
+		Email:   format.UserTag(tag, userInfo.Uuid),
+		Account: serial.ToTypedMessage(tuicAccount),
 	}
 }

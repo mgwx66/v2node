@@ -41,6 +41,11 @@ func serverHandle(_ *cobra.Command, _ []string) {
 	showVersion()
 	c := conf.New()
 	err := c.LoadFromPath(config)
+	log.SetFormatter(&log.TextFormatter{
+		DisableTimestamp: true,
+		DisableQuote:     true,
+		PadLevelText:     false,
+	})
 	if err != nil {
 		log.WithField("err", err).Error("Load config file failed")
 		return
