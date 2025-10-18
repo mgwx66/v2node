@@ -79,8 +79,6 @@ else
     echo -e "${red}检测架构失败，使用默认架构: ${arch}${plain}"
 fi
 
-echo "架构: ${arch}"
-
 if [ "$(getconf WORD_BIT)" != '32' ] && [ "$(getconf LONG_BIT)" != '64' ] ; then
     echo "本软件不支持 32 位系统(x86)，请使用 64 位系统(x86_64)，如果检测有误，请联系作者"
     exit 2
@@ -196,7 +194,7 @@ generate_v2node_config() {
         cat > /etc/v2node/config.json <<EOF
 {
     "Log": {
-        "Level": "info",
+        "Level": "warning",
         "Output": "",
         "Access": "none"
     },
