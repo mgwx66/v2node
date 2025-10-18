@@ -40,7 +40,7 @@ type CommonNode struct {
 	TlsSettings        TlsSettings `json:"tls_settings"`
 	CertInfo           *CertInfo
 	Network            string          `json:"network"`
-	NetworkSettings    json.RawMessage `json:"networkSettings"`
+	NetworkSettings    json.RawMessage `json:"network_settings"`
 	Encryption         string          `json:"encryption"`
 	EncryptionSettings EncSettings     `json:"encryption_settings"`
 	ServerName         string          `json:"server_name"`
