@@ -24,7 +24,7 @@ import (
 )
 
 func (v *V2Core) GetUserManager(tag string) (proxy.UserManager, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	handler, err := v.ihm.GetHandler(ctx, tag)
 	if err != nil {
@@ -51,7 +51,7 @@ func (vc *V2Core) DelUsers(users []panel.UserInfo, tag string, _ *panel.NodeInfo
 	defer vc.users.mapLock.Unlock()
 	for i := range users {
 		user = format.UserTag(tag, users[i].Uuid)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		err = userManager.RemoveUser(ctx, user)
 		cancel()
 		if err != nil {
@@ -140,7 +140,7 @@ func (v *V2Core) AddUsers(p *AddUsersParams) (added int, err error) {
 		if err != nil {
 			return 0, err
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		err = man.AddUser(ctx, mUser)
 		cancel()
 		if err != nil {
