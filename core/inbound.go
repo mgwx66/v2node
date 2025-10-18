@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	panel "github.com/wyx2685/v2node/api/v2board"
 	"github.com/xtls/xray-core/common/net"
@@ -18,7 +19,9 @@ import (
 )
 
 func (v *V2Core) removeInbound(tag string) error {
-	return v.ihm.RemoveHandler(context.Background(), tag)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return v.ihm.RemoveHandler(ctx, tag)
 }
 
 func (v *V2Core) addInbound(config *core.InboundHandlerConfig) error {
@@ -30,7 +33,9 @@ func (v *V2Core) addInbound(config *core.InboundHandlerConfig) error {
 	if !ok {
 		return fmt.Errorf("not an InboundHandler: %s", err)
 	}
-	if err := v.ihm.AddHandler(context.Background(), handler); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := v.ihm.AddHandler(ctx, handler); err != nil {
 		return err
 	}
 	return nil

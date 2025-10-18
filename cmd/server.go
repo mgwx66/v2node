@@ -93,12 +93,11 @@ func serverHandle(_ *cobra.Command, _ []string) {
 	}
 	log.Info("Nodes started")
 	if watch {
+		// On file change, just signal reload; do not run reload concurrently here
 		err = c.Watch(config, func() {
-			err := reload(config, &nodes, &v2core)
-			if err != nil {
-				log.WithField("err", err).Panic("restart failed")
-			} else {
-				log.Info("v2node restarted")
+			select {
+			case reloadCh <- struct{}{}:
+			default: // drop if a reload is already queued
 			}
 		})
 		if err != nil {
@@ -130,6 +129,12 @@ func serverHandle(_ *cobra.Command, _ []string) {
 }
 
 func reload(config string, nodes **node.Node, v2core **core.V2Core) error {
+	// Preserve old reload channel so new core continues to receive signals
+	var oldReloadCh chan struct{}
+	if *v2core != nil {
+		oldReloadCh = (*v2core).ReloadCh
+	}
+
 	(*nodes).Close()
 	if err := (*v2core).Close(); err != nil {
 		return err
@@ -146,6 +151,8 @@ func reload(config string, nodes **node.Node, v2core **core.V2Core) error {
 	}
 
 	newCore := core.New(newConf)
+	// Reattach reload channel
+	newCore.ReloadCh = oldReloadCh
 	if err := newCore.Start(newNodes.NodeInfos); err != nil {
 		return err
 	}

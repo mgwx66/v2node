@@ -54,7 +54,13 @@ func (c *Controller) nodeInfoMonitor() (err error) {
 		log.WithFields(log.Fields{
 			"tag": c.tag,
 		}).Error("Got new node info, reload")
-		c.server.ReloadCh <- struct{}{}
+		// Non-blocking signal to avoid goroutine stuck when channel is full or nil
+		if c.server.ReloadCh != nil {
+			select {
+			case c.server.ReloadCh <- struct{}{}:
+			default:
+			}
+		}
 	}
 	// get user info
 	newU, err := c.apiClient.GetUserList()

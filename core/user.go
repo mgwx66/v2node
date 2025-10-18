@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
+	"time"
 
 	panel "github.com/wyx2685/v2node/api/v2board"
 	"github.com/wyx2685/v2node/common/counter"
@@ -23,7 +24,9 @@ import (
 )
 
 func (v *V2Core) GetUserManager(tag string) (proxy.UserManager, error) {
-	handler, err := v.ihm.GetHandler(context.Background(), tag)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	handler, err := v.ihm.GetHandler(ctx, tag)
 	if err != nil {
 		return nil, fmt.Errorf("no such inbound tag: %s", err)
 	}
@@ -48,7 +51,9 @@ func (vc *V2Core) DelUsers(users []panel.UserInfo, tag string, _ *panel.NodeInfo
 	defer vc.users.mapLock.Unlock()
 	for i := range users {
 		user = format.UserTag(tag, users[i].Uuid)
-		err = userManager.RemoveUser(context.Background(), user)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err = userManager.RemoveUser(ctx, user)
+		cancel()
 		if err != nil {
 			return err
 		}
@@ -135,7 +140,9 @@ func (v *V2Core) AddUsers(p *AddUsersParams) (added int, err error) {
 		if err != nil {
 			return 0, err
 		}
-		err = man.AddUser(context.Background(), mUser)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err = man.AddUser(ctx, mUser)
+		cancel()
 		if err != nil {
 			return 0, err
 		}

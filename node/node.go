@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	log "github.com/sirupsen/logrus"
 	panel "github.com/wyx2685/v2node/api/v2board"
 	"github.com/wyx2685/v2node/conf"
 	"github.com/wyx2685/v2node/core"
@@ -52,9 +53,9 @@ func (n *Node) Start(nodes []conf.NodeConfig, core *core.V2Core) error {
 
 func (n *Node) Close() {
 	for _, c := range n.controllers {
-		err := c.Close()
-		if err != nil {
-			panic(err)
+		if err := c.Close(); err != nil {
+			// log and continue closing others to avoid blocking shutdown
+			log.Errorf("close controller failed: %v", err)
 		}
 	}
 	n.controllers = nil
