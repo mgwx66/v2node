@@ -259,7 +259,10 @@ func buildVMess(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig)
 func buildTrojan(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig) error {
 	inbound.Protocol = "trojan"
 	v := nodeInfo.Common
-	s := []byte("{}")
+	s, err := json.Marshal(&coreConf.TrojanServerConfig{})
+	if err != nil {
+		return fmt.Errorf("marshal trojan settings error: %s", err)
+	}
 	inbound.Settings = (*json.RawMessage)(&s)
 	network := v.Network
 	if network == "" {
@@ -267,6 +270,9 @@ func buildTrojan(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig
 	}
 	t := coreConf.TransportProtocol(network)
 	inbound.StreamSetting = &coreConf.StreamConfig{Network: &t}
+	if len(v.NetworkSettings) == 0 {
+		return nil
+	}
 	switch network {
 	case "tcp":
 		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.TCPSettings)
