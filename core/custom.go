@@ -62,6 +62,16 @@ func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHand
 					continue
 				}
 				coreRouterConfig.RuleList = append(coreRouterConfig.RuleList, rawRule)
+			case "block_ip":
+				rule := map[string]interface{}{
+					"ip":          route.Match,
+					"outboundTag": "block",
+				}
+				rawRule, err := json.Marshal(rule)
+				if err != nil {
+					continue
+				}
+				coreRouterConfig.RuleList = append(coreRouterConfig.RuleList, rawRule)
 			case "route":
 				if route.ActionValue == nil {
 					continue

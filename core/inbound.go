@@ -58,6 +58,8 @@ func buildInbound(nodeInfo *panel.NodeInfo, tag string) (*core.InboundHandlerCon
 		err = buildHysteria2(nodeInfo, in)
 	case "tuic":
 		err = buildTuic(nodeInfo, in)
+	case "anytls":
+		err = buildAnyTLS(nodeInfo, in)
 	default:
 		return nil, fmt.Errorf("unsupported node type: %s", nodeInfo.Type)
 	}
@@ -383,6 +385,22 @@ func buildTuic(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig) 
 	inbound.Settings = (*json.RawMessage)(&sets)
 	if err != nil {
 		return fmt.Errorf("marshal tuic settings error: %s", err)
+	}
+	return nil
+}
+
+func buildAnyTLS(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig) error {
+	inbound.Protocol = "anytls"
+	s := nodeInfo.Common
+	settings := &coreConf.AnyTLSServerConfig{
+		PaddingScheme: s.PaddingScheme,
+	}
+	t := coreConf.TransportProtocol("tcp")
+	inbound.StreamSetting = &coreConf.StreamConfig{Network: &t}
+	sets, err := json.Marshal(settings)
+	inbound.Settings = (*json.RawMessage)(&sets)
+	if err != nil {
+		return fmt.Errorf("marshal anytls settings error: %s", err)
 	}
 	return nil
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/infra/conf"
 	"github.com/xtls/xray-core/proxy"
+	"github.com/xtls/xray-core/proxy/anytls"
 	"github.com/xtls/xray-core/proxy/hysteria2"
 	"github.com/xtls/xray-core/proxy/shadowsocks"
 	"github.com/xtls/xray-core/proxy/shadowsocks_2022"
@@ -128,6 +129,8 @@ func (v *V2Core) AddUsers(p *AddUsersParams) (added int, err error) {
 		users = buildHysteria2Users(p.Tag, p.Users)
 	case "tuic":
 		users = buildTuicUsers(p.Tag, p.Users)
+	case "anytls":
+		users = buildAnyTLSUsers(p.Tag, p.Users)
 	default:
 		return 0, fmt.Errorf("unsupported node type: %s", p.NodeInfo.Type)
 	}
@@ -300,5 +303,24 @@ func buildTuicUser(tag string, userInfo *panel.UserInfo) (user *protocol.User) {
 		Level:   0,
 		Email:   format.UserTag(tag, userInfo.Uuid),
 		Account: serial.ToTypedMessage(tuicAccount),
+	}
+}
+
+func buildAnyTLSUsers(tag string, userInfo []panel.UserInfo) (users []*protocol.User) {
+	users = make([]*protocol.User, len(userInfo))
+	for i := range userInfo {
+		users[i] = buildAnyTLSUser(tag, &userInfo[i])
+	}
+	return users
+}
+
+func buildAnyTLSUser(tag string, userInfo *panel.UserInfo) (user *protocol.User) {
+	anyTLSAccount := &anytls.Account{
+		Password: userInfo.Uuid,
+	}
+	return &protocol.User{
+		Level:   0,
+		Email:   format.UserTag(tag, userInfo.Uuid),
+		Account: serial.ToTypedMessage(anyTLSAccount),
 	}
 }
