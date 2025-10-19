@@ -2,14 +2,35 @@ package core
 
 import (
 	"encoding/json"
+	"net"
 
 	panel "github.com/wyx2685/v2node/api/v2board"
 	"github.com/xtls/xray-core/app/dns"
 	"github.com/xtls/xray-core/app/router"
-	"github.com/xtls/xray-core/common/net"
+	xnet "github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/core"
 	coreConf "github.com/xtls/xray-core/infra/conf"
 )
+
+// hasPublicIPv6 checks if the machine has a public IPv6 address
+func hasPublicIPv6() bool {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return false
+	}
+	for _, addr := range addrs {
+		ipNet, ok := addr.(*net.IPNet)
+		if !ok {
+			continue
+		}
+		ip := ipNet.IP
+		// Check if it's IPv6, not loopback, not link-local, not private/ULA
+		if ip.To4() == nil && !ip.IsLoopback() && !ip.IsLinkLocalUnicast() && !ip.IsPrivate() {
+			return true
+		}
+	}
+	return false
+}
 
 func hasOutboundWithTag(list []*core.OutboundHandlerConfig, tag string) bool {
 	for _, o := range list {
@@ -22,25 +43,37 @@ func hasOutboundWithTag(list []*core.OutboundHandlerConfig, tag string) bool {
 
 func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHandlerConfig, *router.Config, error) {
 	//dns
+	queryStrategy := "UseIPv4v6"
+	if !hasPublicIPv6() {
+		queryStrategy = "UseIPv4"
+	}
 	coreDnsConfig := &coreConf.DNSConfig{
 		Servers: []*coreConf.NameServerConfig{
 			{
 				Address: &coreConf.Address{
-					Address: net.ParseAddress("localhost"),
+					Address: xnet.ParseAddress("localhost"),
 				},
 			},
 		},
+		QueryStrategy: queryStrategy,
 	}
 	//outbound
 	defaultoutbound, _ := buildDefaultOutbound()
 	coreOutboundConfig := append([]*core.OutboundHandlerConfig{}, defaultoutbound)
 	block, _ := buildBlockOutbound()
 	coreOutboundConfig = append(coreOutboundConfig, block)
+	dns, _ := buildDnsOutbound()
+	coreOutboundConfig = append(coreOutboundConfig, dns)
 
 	//route
 	domainStrategy := "AsIs"
+	dnsRule, _ := json.Marshal(map[string]interface{}{
+		"port":        "53",
+		"network":     "udp",
+		"outboundTag": "dns_out",
+	})
 	coreRouterConfig := &coreConf.RouterConfig{
-		RuleList:       []json.RawMessage{},
+		RuleList:       []json.RawMessage{dnsRule},
 		DomainStrategy: &domainStrategy,
 	}
 
@@ -56,7 +89,7 @@ func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHand
 				}
 				server := &coreConf.NameServerConfig{
 					Address: &coreConf.Address{
-						Address: net.ParseAddress(*route.ActionValue),
+						Address: xnet.ParseAddress(*route.ActionValue),
 					},
 					Domains: route.Match,
 				}
@@ -152,7 +185,7 @@ func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHand
 				}
 				coreOutboundConfig = append(coreOutboundConfig, custom_outbound)
 				rule := map[string]interface{}{
-					"network":     []string{"tcp", "udp"},
+					"network":     "tcp,udp",
 					"outboundTag": "default_out",
 				}
 				rawRule, err := json.Marshal(rule)

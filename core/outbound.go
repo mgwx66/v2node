@@ -39,6 +39,14 @@ func buildBlockOutbound() (*core.OutboundHandlerConfig, error) {
 	return outboundDetourConfig.Build()
 }
 
+// build dns outbound
+func buildDnsOutbound() (*core.OutboundHandlerConfig, error) {
+	outboundDetourConfig := &conf.OutboundDetourConfig{}
+	outboundDetourConfig.Protocol = "dns"
+	outboundDetourConfig.Tag = "dns_out"
+	return outboundDetourConfig.Build()
+}
+
 func (v *V2Core) addOutbound(config *core.OutboundHandlerConfig) error {
 	rawHandler, err := core.CreateObject(v.Server, config)
 	if err != nil {
