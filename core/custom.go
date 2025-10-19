@@ -11,6 +11,15 @@ import (
 	coreConf "github.com/xtls/xray-core/infra/conf"
 )
 
+func hasOutboundWithTag(list []*core.OutboundHandlerConfig, tag string) bool {
+	for _, o := range list {
+		if o != nil && o.Tag == tag {
+			return true
+		}
+	}
+	return false
+}
+
 func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHandlerConfig, *router.Config, error) {
 	//dns
 	coreDnsConfig := &coreConf.DNSConfig{
@@ -81,6 +90,9 @@ func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHand
 				if err != nil {
 					continue
 				}
+				if hasOutboundWithTag(coreOutboundConfig, outbound.Tag) {
+					continue
+				}
 				custom_outbound, err := outbound.Build()
 				if err != nil {
 					continue
@@ -104,6 +116,9 @@ func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHand
 				if err != nil {
 					continue
 				}
+				if hasOutboundWithTag(coreOutboundConfig, outbound.Tag) {
+					continue
+				}
 				custom_outbound, err := outbound.Build()
 				if err != nil {
 					continue
@@ -112,6 +127,33 @@ func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHand
 				rule := map[string]interface{}{
 					"ip":          route.Match,
 					"outboundTag": outbound.Tag,
+				}
+				rawRule, err := json.Marshal(rule)
+				if err != nil {
+					continue
+				}
+				coreRouterConfig.RuleList = append(coreRouterConfig.RuleList, rawRule)
+			case "default_out":
+				if route.ActionValue == nil {
+					continue
+				}
+				if hasOutboundWithTag(coreOutboundConfig, "default_out") {
+					continue
+				}
+				outbound := &coreConf.OutboundDetourConfig{}
+				err := json.Unmarshal([]byte(*route.ActionValue), outbound)
+				if err != nil {
+					continue
+				}
+				outbound.Tag = "default_out"
+				custom_outbound, err := outbound.Build()
+				if err != nil {
+					continue
+				}
+				coreOutboundConfig = append(coreOutboundConfig, custom_outbound)
+				rule := map[string]interface{}{
+					"network":     []string{"tcp", "udp"},
+					"outboundTag": "default_out",
 				}
 				rawRule, err := json.Marshal(rule)
 				if err != nil {
