@@ -31,7 +31,7 @@ func New(c *conf.NodeConfig) (*Client, error) {
 	if c.Timeout > 0 {
 		client.SetTimeout(time.Duration(c.Timeout) * time.Second)
 	} else {
-		client.SetTimeout(5 * time.Second)
+		client.SetTimeout(30 * time.Second)
 	}
 	client.OnError(func(req *resty.Request, err error) {
 		var v *resty.ResponseError
