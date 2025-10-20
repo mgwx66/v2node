@@ -1,13 +1,11 @@
 package core
 
 import (
-	"context"
 	"fmt"
 
 	"encoding/json"
 
 	"github.com/xtls/xray-core/core"
-	"github.com/xtls/xray-core/features/outbound"
 	"github.com/xtls/xray-core/infra/conf"
 )
 
@@ -45,19 +43,4 @@ func buildDnsOutbound() (*core.OutboundHandlerConfig, error) {
 	outboundDetourConfig.Protocol = "dns"
 	outboundDetourConfig.Tag = "dns_out"
 	return outboundDetourConfig.Build()
-}
-
-func (v *V2Core) addOutbound(config *core.OutboundHandlerConfig) error {
-	rawHandler, err := core.CreateObject(v.Server, config)
-	if err != nil {
-		return err
-	}
-	handler, ok := rawHandler.(outbound.Handler)
-	if !ok {
-		return fmt.Errorf("not an InboundHandler: %s", err)
-	}
-	if err := v.ohm.AddHandler(context.Background(), handler); err != nil {
-		return err
-	}
-	return nil
 }

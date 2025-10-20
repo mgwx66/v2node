@@ -326,18 +326,52 @@ func buildShadowsocks(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourC
 		Password: randomPasswd,
 	}
 	settings.Users = append(settings.Users, defaultSSuser)
+	// Default: support both tcp and udp
 	settings.NetworkList = &coreConf.NetworkList{"tcp", "udp"}
 	settings.IVCheck = true
-	t := coreConf.TransportProtocol("tcp")
-	inbound.StreamSetting = &coreConf.StreamConfig{Network: &t}
+	// Only set StreamSetting when NetworkSettings is configured
 	if len(s.NetworkSettings) != 0 {
 		shttp := &ShadowsocksHTTPNetworkSettings{}
 		err := json.Unmarshal(s.NetworkSettings, shttp)
 		if err != nil {
 			return fmt.Errorf("unmarshal shadowsocks settings error: %s", err)
 		}
-		inbound.StreamSetting.RAWSettings.AcceptProxyProtocol = shttp.AcceptProxyProtocol
-		//todo path and host
+		// HTTP obfuscation requires TCP only (PROXY protocol can work with UDP)
+		if shttp.Path != "" || shttp.Host != "" {
+			// Restrict protocol-level network list to TCP only for HTTP obfuscation
+			settings.NetworkList = &coreConf.NetworkList{"tcp"}
+		}
+
+		// Set StreamSetting for TCP features (PROXY protocol and/or HTTP obfuscation)
+		if shttp.AcceptProxyProtocol || shttp.Path != "" || shttp.Host != "" {
+			t := coreConf.TransportProtocol("tcp")
+			inbound.StreamSetting = &coreConf.StreamConfig{Network: &t}
+			inbound.StreamSetting.TCPSettings = &coreConf.TCPConfig{}
+			inbound.StreamSetting.TCPSettings.AcceptProxyProtocol = shttp.AcceptProxyProtocol
+			// Set HTTP header settings if path or host is configured
+			if shttp.Path != "" || shttp.Host != "" {
+				httpHeader := map[string]interface{}{
+					"type":    "http",
+					"request": map[string]interface{}{},
+				}
+				request := httpHeader["request"].(map[string]interface{})
+				// Use "/" as default path if not specified
+				path := shttp.Path
+				if path == "" {
+					path = "/"
+				}
+				request["path"] = []string{path}
+				if shttp.Host != "" {
+					request["headers"] = map[string]interface{}{
+						"Host": []string{shttp.Host},
+					}
+				}
+				headerJSON, err := json.Marshal(httpHeader)
+				if err == nil {
+					inbound.StreamSetting.TCPSettings.HeaderConfig = json.RawMessage(headerJSON)
+				}
+			}
+		}
 	}
 
 	sets, err := json.Marshal(settings)
