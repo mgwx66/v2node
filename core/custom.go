@@ -114,7 +114,7 @@ func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHand
 					continue
 				}
 				coreRouterConfig.RuleList = append(coreRouterConfig.RuleList, rawRule)
-			case "block_protocol":
+			case "protocol":
 				rule := map[string]interface{}{
 					"protocol":    route.Match,
 					"outboundTag": "block",
