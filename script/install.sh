@@ -145,21 +145,21 @@ install_base() {
     if [[ x"${release}" == x"centos" ]]; then
         # epel-release for extra packages if not present
         rpm -q epel-release >/dev/null 2>&1 || yum install -y epel-release >/dev/null 2>&1
-        need_install_yum wget curl unzip tar cronie socat ca-certificates
+        need_install_yum wget curl unzip tar cronie socat ca-certificates pv
         update-ca-trust force-enable >/dev/null 2>&1 || true
     elif [[ x"${release}" == x"alpine" ]]; then
-        need_install_apk wget curl unzip tar socat ca-certificates
+        need_install_apk wget curl unzip tar socat ca-certificates pv
         update-ca-certificates >/dev/null 2>&1 || true
     elif [[ x"${release}" == x"debian" ]]; then
-        need_install_apt wget curl unzip tar cron socat ca-certificates
+        need_install_apt wget curl unzip tar cron socat ca-certificates pv
         update-ca-certificates >/dev/null 2>&1 || true
     elif [[ x"${release}" == x"ubuntu" ]]; then
-        need_install_apt wget curl unzip tar cron socat ca-certificates
+        need_install_apt wget curl unzip tar cron socat ca-certificates pv
         update-ca-certificates >/dev/null 2>&1 || true
     elif [[ x"${release}" == x"arch" ]]; then
         pacman -Sy --noconfirm >/dev/null 2>&1
         # --needed will skip already installed packages; Arch cron package is cronie
-        pacman -S --noconfirm --needed wget curl unzip tar cronie socat ca-certificates >/dev/null 2>&1
+        pacman -S --noconfirm --needed wget curl unzip tar cronie socat ca-certificates pv >/dev/null 2>&1
     fi
 }
 
@@ -202,13 +202,26 @@ generate_v2node_config() {
         {
             "ApiHost": "${api_host}",
             "NodeID": ${node_id},
-            "ApiKey": "${api_key}"
+            "ApiKey": "${api_key}",
+            "Timeout": 30
         }
     ]
 }
 EOF
-        echo -e "${green}已生成 /etc/v2node/config.json${plain}"
         echo -e "${green}V2node 配置文件生成完成,正在重新启动服务${plain}"
+        if [[ x"${release}" == x"alpine" ]]; then
+            service v2node restart
+        else
+            systemctl restart v2node
+        fi
+        sleep 2
+        check_status
+        echo -e ""
+        if [[ $? == 0 ]]; then
+            echo -e "${green}v2node 重启成功${plain}"
+        else
+            echo -e "${red}v2node 可能启动失败，请使用 v2node log 查看日志信息${plain}"
+        fi
 }
 
 install_v2node() {
@@ -226,8 +239,9 @@ install_v2node() {
             echo -e "${red}检测 v2node 版本失败，可能是超出 Github API 限制，请稍后再试，或手动指定 v2node 版本安装${plain}"
             exit 1
         fi
-        echo -e "检测到 v2node 最新版本：${last_version}，开始安装"
-        wget --no-check-certificate -N --progress=bar -O /usr/local/v2node/v2node-linux.zip https://github.com/wyx2685/v2node/releases/download/${last_version}/v2node-linux-${arch}.zip
+        echo -e "${green}检测到最新版本：${last_version}，开始安装...${plain}"
+        url="https://github.com/wyx2685/v2node/releases/download/${last_version}/v2node-linux-${arch}.zip"
+        curl -sL "$url" | pv -s 30M -W -N "下载进度" > /usr/local/v2node/v2node-linux.zip
         if [[ $? -ne 0 ]]; then
             echo -e "${red}下载 v2node 失败，请确保你的服务器能够下载 Github 的文件${plain}"
             exit 1
@@ -235,8 +249,7 @@ install_v2node() {
     else
     last_version=$version_param
         url="https://github.com/wyx2685/v2node/releases/download/${last_version}/v2node-linux-${arch}.zip"
-        echo -e "开始安装 v2node $1"
-        wget --no-check-certificate -N --progress=bar -O /usr/local/v2node/v2node-linux.zip ${url}
+        curl -sL "$url" | pv -s 30M -W -N "下载进度" > /usr/local/v2node/v2node-linux.zip
         if [[ $? -ne 0 ]]; then
             echo -e "${red}下载 v2node $1 失败，请确保此版本存在${plain}"
             exit 1
@@ -323,7 +336,7 @@ EOF
         if [[ $? == 0 ]]; then
             echo -e "${green}v2node 重启成功${plain}"
         else
-            echo -e "${red}v2node 可能启动失败，请稍后使用 v2node log 查看日志信息，若无法启动，则可能更改了配置格式，请前往 wiki 查看：https://github.com/v2node-project/v2node/wiki${plain}"
+            echo -e "${red}v2node 可能启动失败，请使用 v2node log 查看日志信息${plain}"
         fi
         first_install=false
     fi
@@ -334,8 +347,8 @@ EOF
 
     cd $cur_dir
     rm -f install.sh
-    echo -e ""
-    echo "v2node 管理脚本使用方法: "
+    echo "------------------------------------------"
+    echo -e "${green}【广告位招租】${plain}管理脚本使用方法: "
     echo "------------------------------------------"
     echo "v2node              - 显示管理菜单 (功能更多)"
     echo "v2node start        - 启动 v2node"
@@ -366,13 +379,9 @@ EOF
 
             # 生成配置文件（覆盖可能从包中复制的模板）
             generate_v2node_config "$api_host" "$node_id" "$api_key"
-            v2node restart
         else
-            echo "已跳过自动生成配置。如需后续生成，可执行: v2node generate"
+            echo "${green}已跳过自动生成配置。如需后续生成，可执行: v2node generate${plain}"
         fi
-    else
-        echo "检测到已有配置文件，已跳过自动生成配置。如需后续生成，可执行: v2node generate"
-        v2node restart
     fi
 }
 

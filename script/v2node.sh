@@ -446,15 +446,28 @@ generate_v2node_config() {
         {
             "ApiHost": "${api_host}",
             "NodeID": ${node_id},
-            "ApiKey": "${api_key}"
+            "ApiKey": "${api_key}",
+            "Timeout": 30
         }
     ]
 }
 EOF
-        echo -e "${green}已生成 /etc/v2node/config.json${plain}"
         echo -e "${green}V2node 配置文件生成完成,正在重新启动服务${plain}"
-        v2node restart
+        if [[ x"${release}" == x"alpine" ]]; then
+            service v2node restart
+        else
+            systemctl restart v2node
+        fi
+        sleep 2
+        check_status
+        echo -e ""
+        if [[ $? == 0 ]]; then
+            echo -e "${green}v2node 重启成功${plain}"
+        else
+            echo -e "${red}v2node 可能启动失败，请使用 v2node log 查看日志信息${plain}"
+        fi
 }
+
 
 generate_config_file() {
     # 交互式收集参数，提供示例默认值
