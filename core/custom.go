@@ -114,6 +114,16 @@ func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHand
 					continue
 				}
 				coreRouterConfig.RuleList = append(coreRouterConfig.RuleList, rawRule)
+			case "block_protocol":
+				rule := map[string]interface{}{
+					"protocol":    route.Match,
+					"outboundTag": "block",
+				}
+				rawRule, err := json.Marshal(rule)
+				if err != nil {
+					continue
+				}
+				coreRouterConfig.RuleList = append(coreRouterConfig.RuleList, rawRule)
 			case "route":
 				if route.ActionValue == nil {
 					continue
@@ -123,14 +133,6 @@ func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHand
 				if err != nil {
 					continue
 				}
-				if hasOutboundWithTag(coreOutboundConfig, outbound.Tag) {
-					continue
-				}
-				custom_outbound, err := outbound.Build()
-				if err != nil {
-					continue
-				}
-				coreOutboundConfig = append(coreOutboundConfig, custom_outbound)
 				rule := map[string]interface{}{
 					"domain":      route.Match,
 					"outboundTag": outbound.Tag,
@@ -140,6 +142,14 @@ func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHand
 					continue
 				}
 				coreRouterConfig.RuleList = append(coreRouterConfig.RuleList, rawRule)
+				if hasOutboundWithTag(coreOutboundConfig, outbound.Tag) {
+					continue
+				}
+				custom_outbound, err := outbound.Build()
+				if err != nil {
+					continue
+				}
+				coreOutboundConfig = append(coreOutboundConfig, custom_outbound)
 			case "route_ip":
 				if route.ActionValue == nil {
 					continue
@@ -149,14 +159,6 @@ func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHand
 				if err != nil {
 					continue
 				}
-				if hasOutboundWithTag(coreOutboundConfig, outbound.Tag) {
-					continue
-				}
-				custom_outbound, err := outbound.Build()
-				if err != nil {
-					continue
-				}
-				coreOutboundConfig = append(coreOutboundConfig, custom_outbound)
 				rule := map[string]interface{}{
 					"ip":          route.Match,
 					"outboundTag": outbound.Tag,
@@ -166,6 +168,14 @@ func GetCustomConfig(infos []*panel.NodeInfo) (*dns.Config, []*core.OutboundHand
 					continue
 				}
 				coreRouterConfig.RuleList = append(coreRouterConfig.RuleList, rawRule)
+				if hasOutboundWithTag(coreOutboundConfig, outbound.Tag) {
+					continue
+				}
+				custom_outbound, err := outbound.Build()
+				if err != nil {
+					continue
+				}
+				coreOutboundConfig = append(coreOutboundConfig, custom_outbound)
 			case "default_out":
 				if route.ActionValue == nil {
 					continue
